@@ -181,6 +181,12 @@ or
 streamlit run scripts/streamlit/superresolution.py -- configs/stable-diffusion/x4-upscaling.yaml <path-to-checkpoint>
 ```
 
+or
+
+```
+python ./scripts/superresolution.py --ckpt ../stable-diffusion-2/x4-upscaler-ema.ckpt --init-img outputs/txt2img-samples/samples/00000.png --prompt "marble aquila from warhammer 40k, Detailed and Intricate, Photo, Realistic, HD, glamour Photography"
+```
+
 for a Gradio or Streamlit demo of the text-guided x4 superresolution model.  
 This model can be used both on real inputs and on synthesized examples. For the latter, we recommend setting a higher 
 `noise_level`, e.g. `noise_level=100`.
