@@ -221,9 +221,11 @@ def main(opt):
     os.makedirs(sample_path, exist_ok=True)
     base_count = len(os.listdir(sample_path))
     sampler = initialize_model(opt.config, opt.ckpt)
-    resize_image = predict(sampler, input_image, opt.prompt, opt.steps, opt.n_samples, opt.scale, opt.seed, opt.ddim_eta, opt.noise_level)
+    resize_images = predict(sampler, input_image, opt.prompt, opt.steps, opt.n_samples, opt.scale, opt.seed, opt.ddim_eta, opt.noise_level)
     print("Upscaling done, save image")
-    resize_image.save(os.path.join(sample_path, f"{base_count:05}.png"))
+    for resize_image in resize_images:
+        resize_image.save(os.path.join(sample_path, f"{base_count:05}.png"))
+        base_count += 1
 
 if __name__ == "__main__":
     opt = parse_args()
