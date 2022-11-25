@@ -1,14 +1,12 @@
-import sys
+import os, argparse
 import torch
 import numpy as np
-import gradio as gr
 from PIL import Image
 from omegaconf import OmegaConf
 from einops import repeat, rearrange
 from pytorch_lightning import seed_everything
 from imwatermark import WatermarkEncoder
 
-from scripts.txt2img import put_watermark
 from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.models.diffusion.ddpm import LatentUpscaleDiffusion, LatentUpscaleFinetuneDiffusion
 from ldm.util import exists, instantiate_from_config
@@ -116,7 +114,7 @@ def paint(sampler, image, prompt, seed, scale, h, w, steps, num_samples=1, callb
         x_samples_ddim = model.decode_first_stage(samples)
     result = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
     result = result.cpu().numpy().transpose(0, 2, 3, 1) * 255
-    return [put_watermark(Image.fromarray(img.astype(np.uint8)), wm_encoder) for img in result]
+    return [Image.fromarray(img.astype(np.uint8)) for img in result]
 
 
 def pad_image(input_image):
@@ -127,7 +125,7 @@ def pad_image(input_image):
     return im_padded
 
 
-def predict(input_image, prompt, steps, num_samples, scale, seed, eta, noise_level):
+def predict(sampler, input_image, prompt, steps, num_samples, scale, seed, eta, noise_level):
     init_image = input_image.convert("RGB")
     image = pad_image(init_image)  # resize to integer multiple of 32
     width, height = image.size
@@ -148,50 +146,93 @@ def predict(input_image, prompt, steps, num_samples, scale, seed, eta, noise_lev
     )
     return result
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--init-img",
+        type=str,
+        nargs="?",
+        help="path to the input image"
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        nargs="?",
+        default="a professional photograph of an astronaut riding a triceratops",
+        help="the prompt to render"
+    )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        nargs="?",
+        help="dir to write results to",
+        default="outputs/resize-samples"
+    )
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=50,
+        help="number of ddim sampling steps",
+    )
+    parser.add_argument(
+        "--n_samples",
+        type=int,
+        default=3,
+        help="how many samples to produce for each given prompt. A.k.a batch size",
+    )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=10.0,
+        help="Image scale 0.1 to 30",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="the seed (0 to 2147483647)",
+    )
+    parser.add_argument(
+        "--ddim_eta",
+        type=float,
+        default=0.0,
+        help="ddim eta (eta=0.0 corresponds to deterministic sampling, max 1.0)",
+    )
+    parser.add_argument(
+        "--noise_level",
+        type=int,
+        default=20,
+        help="Nose level 0 to 350",
+    )
+    parser.add_argument(
+        "--ckpt",
+        type=str,
+        help="path to checkpoint of model",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="configs/stable-diffusion/x4-upscaling.yaml",
+        help="path to config which constructs model",
+    )
+    opt = parser.parse_args()
+    return opt
 
-sampler = initialize_model(sys.argv[1], sys.argv[2])
+def main(opt):
+    print("Upscaling image")
 
-block = gr.Blocks().queue()
-with block:
-    with gr.Row():
-        gr.Markdown("## Stable Diffusion Upscaling")
+    input_image = Image.open(opt.init_img)
+    w, h = input_image.size
+    print(f"loaded input image of size ({w}, {h})")
 
-    with gr.Row():
-        with gr.Column():
-            input_image = gr.Image(source='upload', type="pil")
-            gr.Markdown(
-                "Tip: Add a description of the object that should be upscaled, e.g.: 'a professional photograph of a cat")
-            prompt = gr.Textbox(label="Prompt")
-            run_button = gr.Button(label="Run")
-            with gr.Accordion("Advanced options", open=False):
-                num_samples = gr.Slider(
-                    label="Number of Samples", minimum=1, maximum=4, value=1, step=1)
-                steps = gr.Slider(label="DDIM Steps", minimum=2,
-                                  maximum=200, value=75, step=1)
-                scale = gr.Slider(
-                    label="Scale", minimum=0.1, maximum=30.0, value=10, step=0.1
-                )
-                seed = gr.Slider(
-                    label="Seed",
-                    minimum=0,
-                    maximum=2147483647,
-                    step=1,
-                    randomize=True,
-                )
-                eta = gr.Number(label="eta (DDIM)",
-                                value=0.0, min=0.0, max=1.0)
-                noise_level = None
-                if isinstance(sampler.model, LatentUpscaleDiffusion):
-                    # TODO: make this work for all models
-                    noise_level = gr.Number(
-                        label="Noise Augmentation", min=0, max=350, value=20, step=1)
+    sample_path = os.path.join(opt.outdir, "samples")
+    os.makedirs(sample_path, exist_ok=True)
+    base_count = len(os.listdir(sample_path))
 
-        with gr.Column():
-            gallery = gr.Gallery(label="Generated images", show_label=False).style(
-                grid=[2], height="auto")
+    sampler = initialize_model(opt.config, opt.ckpt)
+    resize_image = predict(sampler, input_image, opt.prompt, opt.steps, opt.n_samples, opt.scale, opt.seed, opt.ddim_eta, opt.noise_level)
+    resize_image.save(os.path.join(sample_path, f"{base_count:05}.png"))
 
-    run_button.click(fn=predict, inputs=[
-                     input_image, prompt, steps, num_samples, scale, seed, eta, noise_level], outputs=[gallery])
-
-
-block.launch(share=True)
+if __name__ == "__main__":
+    opt = parse_args()
+    main(opt)
