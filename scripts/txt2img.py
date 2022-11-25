@@ -266,7 +266,7 @@ def main(opt):
                     for x_sample in x_samples:
                         x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                         img = Image.fromarray(x_sample.astype(np.uint8))
-                        img = put_watermark(img, wm_encoder)
+                        #img = put_watermark(img, wm_encoder)
                         img.save(os.path.join(sample_path, f"{base_count:05}.png"))
                         base_count += 1
                         sample_count += 1
@@ -283,7 +283,7 @@ def main(opt):
                 # to image
                 grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
                 grid = Image.fromarray(grid.astype(np.uint8))
-                grid = put_watermark(grid, wm_encoder)
+                #grid = put_watermark(grid, wm_encoder)
                 grid.save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
                 grid_count += 1
 
