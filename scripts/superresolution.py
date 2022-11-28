@@ -224,7 +224,7 @@ def main(opt):
     resize_images = predict(sampler, input_image, opt.prompt, opt.steps, opt.n_samples, opt.scale, opt.seed, opt.ddim_eta, opt.noise_level)
     print("Upscaling done, save image")
     for resize_image in resize_images:
-        resize_image.save(os.path.join(sample_path, f"{base_count:05}.png"))
+        resize_image.save(os.path.join(sample_path, f"{base_count:05}.jpg"), "JPEG", quality=80, optimize=True, progressive=True)
         base_count += 1
 
 if __name__ == "__main__":
