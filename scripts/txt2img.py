@@ -62,7 +62,7 @@ def parse_args():
         default="outputs/txt2img-samples"
     )
     parser.add_argument(
-        "--steps",
+        "--ddim_steps",
         type=int,
         default=50,
         help="number of ddim sampling steps",
@@ -250,7 +250,7 @@ def main(opt):
                         prompts = list(prompts)
                     c = model.get_learned_conditioning(prompts)
                     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
-                    samples, _ = sampler.sample(S=opt.steps,
+                    samples, _ = sampler.sample(S=opt.ddim_steps,
                                                      conditioning=c,
                                                      batch_size=opt.n_samples,
                                                      shape=shape,
