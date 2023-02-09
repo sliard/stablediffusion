@@ -181,6 +181,12 @@ def main():
         default="autocast"
     )
 
+    parser.add_argument(
+        "--skip_grid",
+        action='store_true',
+        help="do not save a grid, only individual samples. Helpful when evaluating lots of samples",
+    )
+
     opt = parser.parse_args()
     seed_everything(opt.seed)
 
@@ -260,17 +266,18 @@ def main():
                             base_count += 1
                         all_samples.append(x_samples)
 
-                # additionally, save as grid
-                grid = torch.stack(all_samples, 0)
-                grid = rearrange(grid, 'n b c h w -> (n b) c h w')
-                grid = make_grid(grid, nrow=n_rows)
+                if not opt.skip_grid:
+                    # additionally, save as grid
+                    grid = torch.stack(all_samples, 0)
+                    grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+                    grid = make_grid(grid, nrow=n_rows)
 
-                # to image
-                grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-                grid = Image.fromarray(grid.astype(np.uint8))
-                grid = put_watermark(grid, wm_encoder)
-                grid.save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
-                grid_count += 1
+                    # to image
+                    grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
+                    grid = Image.fromarray(grid.astype(np.uint8))
+                    grid = put_watermark(grid, wm_encoder)
+                    grid.save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
+                    grid_count += 1
 
     print(f"Your samples are ready and waiting for you here: \n{outpath} \nEnjoy.")
 
