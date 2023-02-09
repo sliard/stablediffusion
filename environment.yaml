@@ -26,5 +26,10 @@ dependencies:
     - invisible-watermark>=0.1.5
     - streamlit-drawable-canvas==0.8.0
     - torchmetrics==0.6.0
-    - xformers
+    - gradio
+    - natsort
+    - safetensors
+    - triton==2.0.0.dev20230208
+    - bitsandbytes
+    - xformers==0.0.17.dev444
     - -e .
